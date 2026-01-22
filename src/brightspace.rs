@@ -12,7 +12,6 @@ struct Brightspace {
     underlings: Vec<String>,
     underling_grades: Vec<f64>,
     admin: Option<AdminHandle>,
-    booster: Option<BoosterHandle>,
 }
 
 #[derive(Debug)]
@@ -21,7 +20,6 @@ enum BrightspaceMessage {
     ProcessGradeDump { grades: Vec<f64> },
     AppendStudentCareerID,
     SetAdmin { admin_handle: AdminHandle },
-    SetBooster { booster_handle: BoosterHandle },
     SendAllToAdmin { reply_to: oneshot::Sender<()> },
 }
 
@@ -32,7 +30,6 @@ impl Brightspace {
             underlings: Vec::new(),
             underling_grades: Vec::new(),
             admin: None,
-            booster: None,
         }
     }
 
@@ -66,19 +63,12 @@ impl Brightspace {
                 println!("[ACTOR] Brightspace initialized Admin field with AdminHandle.");
                 self.admin = Some(admin_handle)
             }
-            BrightspaceMessage::SetBooster { booster_handle } => {
-                println!("[ACTOR] Brightspace initialized Admin field with AdminHandle.");
-                self.booster = Some(booster_handle)
-            }
             BrightspaceMessage::SendAllToAdmin { reply_to } => {
                 if let Some(ad) = &self.admin {
                     println!("[ACTOR]: Brightspace submitting all students and grades to Admin");
 
                     ad.submit_student_names(self.underlings.clone()).await;
-                    self.booster
-                        .clone()
-                        .unwrap()
-                        .submit_student_grades(self.underling_grades.clone())
+                    ad.submit_student_grades(self.underling_grades.clone())
                         .await;
                 } else {
                     println!(
@@ -137,11 +127,6 @@ impl BrightspaceHandle {
 
     pub async fn set_admin(&self, admin_handle: AdminHandle) {
         let msg = BrightspaceMessage::SetAdmin { admin_handle };
-        let _ = self.sender.send(msg).await;
-    }
-
-    pub async fn set_booster(&self, booster_handle: BoosterHandle) {
-        let msg = BrightspaceMessage::SetBooster { booster_handle };
         let _ = self.sender.send(msg).await;
     }
 
