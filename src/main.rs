@@ -12,7 +12,7 @@ async fn main() {
     // Step 1: Construct (which also starts up all backends for) All Actors
     let john_handle = JohnHandle::new().await;
     let brightspace_handle = BrightspaceHandle::new().await;
-    // let booster_handle = BoosterHandle::new().await;
+    let booster_handle = BoosterHandle::new().await;
     let admin_handle = AdminHandle::new().await;
 
     // Step 2: Orchestrate Actors
@@ -44,6 +44,9 @@ async fn main() {
     brightspace_handle
         .report_all_students_and_grades_to_admin()
         .await;
+
+    booster_handle.set_admin(admin_handle.clone()).await;
+    booster_handle.boost_grades().await;
 
     let all_student_names: Vec<String> = admin_handle.get_all_student_names().await;
     let all_student_grades: Vec<f64> = admin_handle.get_all_student_grades().await;

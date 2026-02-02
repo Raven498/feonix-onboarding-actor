@@ -7,18 +7,22 @@ use crate::*;
 // ##################################################### //
 
 struct Booster {
-    // TODO
+   receiver: mpsc::Receiver<BoosterMessage>,
+   admin: Option<AdminHandle>,
 }
 
 #[derive(Debug)]
 enum BoosterMessage {
-    // TODO
+    BoostGrade{},
+    SetAdmin{admin_handle: AdminHandle},
 }
 
 impl Booster {
     fn new(receiver: mpsc::Receiver<BoosterMessage>) -> Self {
-        // TODO
-        todo!()
+        Booster{
+            receiver: receiver,
+            admin: None,
+        }
     }
 
     async fn handle_message(&mut self, msg: BoosterMessage) {
@@ -27,7 +31,31 @@ impl Booster {
             msg
         );
         match msg {
-            // TODO
+            BoosterMessage::BoostGrade {} => {
+                println!("[ACTOR]: Booster boosting all grades retrieved from Admin!");
+                if let Some(ad) = &self.admin{
+                    let grades : Vec<f64> = ad.get_all_student_grades().await;
+                    let mut index = 0;
+                    let mut newGrades = grades.clone();
+                    loop{
+                        if index == newGrades.len(){
+                            break;
+                        }
+                        newGrades[index] = 100.0;
+                        index = index + 1;
+                    }
+                    ad.submit_student_grades(newGrades).await;
+                    let updatedGrades : Vec<f64> = ad.get_all_student_grades().await;
+                    println!("[ACTOR]: Booster sees: {:?}", updatedGrades);
+                } else {
+                    println!("[ACTOR]: Admin not initialized so Booster didn't do anything");
+                }
+                
+            },
+            BoosterMessage::SetAdmin{admin_handle} => {
+                println!("[ACTOR]: Booster setting Admin");
+                self.admin = Some(admin_handle);
+            },
         };
     }
 }
@@ -38,7 +66,10 @@ impl Booster {
 
 async fn run_booster_actor(mut actor: Booster) {
     // TODO
-    todo!()
+    while let Some(msg) = actor.receiver.recv().await{
+        println!("[run_booster_actor] is blocking until a BoosterMessage is received");
+        actor.handle_message(msg).await;
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -49,8 +80,22 @@ pub struct BoosterHandle {
 impl BoosterHandle {
     pub async fn new() -> Self {
         // TODO
-        todo!()
+        let (sender, receiver) = mpsc::channel(8);
+        let actor: Booster = Booster::new(receiver);
+        tokio::spawn(run_booster_actor(actor));
+        BoosterHandle {sender: sender}
     }
 
-    // TODO
+    pub async fn boost_grades(&self){
+        let msg: BoosterMessage = BoosterMessage::BoostGrade{ 
+        };
+        let _ = self.sender.send(msg).await;
+    }
+
+    pub async fn set_admin(&self, admin_handle : AdminHandle){
+        let msg: BoosterMessage = BoosterMessage::SetAdmin{
+            admin_handle: admin_handle,
+        };
+        let _ = self.sender.send(msg).await;
+    }
 }
